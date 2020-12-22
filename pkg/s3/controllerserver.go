@@ -54,55 +54,46 @@ func (cs *controllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 
 	capacityBytes := int64(req.GetCapacityRange().GetRequiredBytes())
 	params := req.GetParameters()
-	mounter := params[mounterTypeKey]
 
-	glog.V(4).Infof("Got a request to create volume %s", volumeID)
+	volume := &volume{
+		ID:       volumeID,
+		Bucket:   params[volumeAttributeBucket],
+		Prefix:   params[volumeAttributePrefix],
+		Capacity: int64(req.GetCapacityRange().GetRequiredBytes()),
+	}
+
+	glog.V(4).Infof("Got a request to create volume  %v", volume)
 
 	s3, err := newS3ClientFromSecrets(req.GetSecrets())
 	if err != nil {
-		return nil, fmt.Errorf("failed to initialize S3 client: %s", err)
+		return nil, fmt.Errorf("failed to initialize S3 client: %w", err)
 	}
-	exists, err := s3.bucketExists(volumeID)
-	if err != nil {
-		return nil, fmt.Errorf("failed to check if bucket %s exists: %v", volumeID, err)
-	}
-	if exists {
-		var b *bucket
-		b, err = s3.getBucket(volumeID)
-		if err != nil {
-			return nil, fmt.Errorf("failed to get bucket metadata of bucket %s: %v", volumeID, err)
-		}
-		// Check if volume capacity requested is bigger than the already existing capacity
-		if capacityBytes > b.CapacityBytes {
-			return nil, status.Error(codes.AlreadyExists, fmt.Sprintf("Volume with the same name: %s but with smaller size already exist", volumeID))
+	s3.completeVolume(volume)
+	params[volumeAttributeBucket] = volume.Bucket
+	params[volumeAttributePrefix] = volume.Prefix
+
+	exists, err := s3.volumeExists(volume)
+	if err != nil || !exists {
+		if err := s3.createVolume(volume); err != nil {
+			return nil, fmt.Errorf("failed to initialize empty volume:%v: %w", volume, err)
 		}
 	} else {
-		if err = s3.createBucket(volumeID); err != nil {
-			return nil, fmt.Errorf("failed to create volume %s: %v", volumeID, err)
+		if e := s3.getVolume(volume); e != nil {
+			return nil, status.Error(codes.Internal, fmt.Sprintf("get volume metadata: %v", e))
 		}
-		if err = s3.createPrefix(volumeID, fsPrefix); err != nil {
-			return nil, fmt.Errorf("failed to create prefix %s: %v", fsPrefix, err)
+		// Check if volume capacity requested is bigger than the already existing capacity
+		if req.GetCapacityRange().GetRequiredBytes() > volume.Capacity {
+			return nil, status.Error(codes.AlreadyExists, fmt.Sprintf("volume with the same name (%s) but with smaller size already exists", volume.ID))
 		}
-	}
-	b := &bucket{
-		Name:          volumeID,
-		Mounter:       mounter,
-		CapacityBytes: capacityBytes,
-		FSPath:        fsPrefix,
-	}
-	if err := s3.setBucket(b); err != nil {
-		return nil, fmt.Errorf("Error setting bucket metadata: %v", err)
 	}
 
 	glog.V(4).Infof("create volume %s", volumeID)
-	s3Vol := s3Volume{}
-	s3Vol.VolName = volumeID
-	s3Vol.VolID = volumeID
+
 	return &csi.CreateVolumeResponse{
 		Volume: &csi.Volume{
 			VolumeId:      volumeID,
 			CapacityBytes: capacityBytes,
-			VolumeContext: req.GetParameters(),
+			VolumeContext: params,
 		},
 	}, nil
 }
@@ -125,17 +116,14 @@ func (cs *controllerServer) DeleteVolume(ctx context.Context, req *csi.DeleteVol
 	if err != nil {
 		return nil, fmt.Errorf("failed to initialize S3 client: %s", err)
 	}
-	exists, err := s3.bucketExists(volumeID)
-	if err != nil {
-		return nil, err
+	exists, err := s3.volumeExists(&volume{ID: volumeID})
+	if err != nil || !exists {
+		glog.V(3).Infof("volume does not exist, return without error, internal error: %v", err)
+		return &csi.DeleteVolumeResponse{}, nil
 	}
-	if exists {
-		if err := s3.removeBucket(volumeID); err != nil {
-			glog.V(3).Infof("Failed to remove volume %s: %v", volumeID, err)
-			return nil, err
-		}
-	} else {
-		glog.V(5).Infof("Bucket %s does not exist, ignoring request", volumeID)
+	if err := s3.removeVolume(&volume{ID: volumeID}); err != nil {
+		glog.V(3).Infof("Failed to remove volume %s: %v", volumeID, err)
+		return nil, status.Error(codes.Internal, fmt.Sprintf("failed to delete volume %s, error: %v", volumeID, err))
 	}
 
 	return &csi.DeleteVolumeResponse{}, nil
@@ -155,11 +143,8 @@ func (cs *controllerServer) ValidateVolumeCapabilities(ctx context.Context, req 
 	if err != nil {
 		return nil, fmt.Errorf("failed to initialize S3 client: %s", err)
 	}
-	exists, err := s3.bucketExists(req.GetVolumeId())
-	if err != nil {
-		return nil, err
-	}
-	if !exists {
+	exists, err := s3.volumeExists(&volume{ID: req.GetVolumeId()})
+	if err != nil || !exists {
 		// return an error if the volume requested does not exist
 		return nil, status.Error(codes.NotFound, fmt.Sprintf("Volume with id %s does not exist", req.GetVolumeId()))
 	}

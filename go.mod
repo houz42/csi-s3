@@ -1,5 +1,7 @@
 module github.com/ctrox/csi-s3
 
+go 1.15
+
 require (
 	github.com/StackExchange/wmi v0.0.0-20180116203802-5d049714c4a6 // indirect
 	github.com/aws/aws-sdk-go v1.14.27 // indirect
@@ -8,6 +10,7 @@ require (
 	github.com/go-ole/go-ole v1.2.1 // indirect
 	github.com/golang/glog v0.0.0-20160126235308-23def4e6c14b
 	github.com/golang/protobuf v1.1.0 // indirect
+	github.com/google/uuid v1.1.2
 	github.com/jacobsa/fuse v0.0.0-20180417054321-cd3959611bcb // indirect
 	github.com/jinzhu/copier v0.0.0-20180308034124-7e38e58719c3 // indirect
 	github.com/jmespath/go-jmespath v0.0.0-20160202185014-0b12d6b521d8 // indirect
@@ -33,10 +36,10 @@ require (
 	google.golang.org/grpc v1.13.0
 	gopkg.in/airbrake/gobrake.v2 v2.0.9 // indirect
 	gopkg.in/gemnasium/logrus-airbrake-hook.v2 v2.1.2 // indirect
-	gopkg.in/ini.v1 v1.41.0
-	gopkg.in/yaml.v2 v2.2.1 // indirect
+	gopkg.in/yaml.v2 v2.2.1
 	k8s.io/apimachinery v0.0.0-20180714051327-705cfa51a97f // indirect
 	k8s.io/klog v0.2.0 // indirect
 	k8s.io/kubernetes v1.13.4
 	k8s.io/utils v0.0.0-20180703210027-ab9069044f32 // indirect
+	launchpad.net/gocheck v0.0.0-20140225173054-000000000087 // indirect
 )

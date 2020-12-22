@@ -1,7 +1,6 @@
 package s3
 
 import (
-	"errors"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -14,6 +13,13 @@ import (
 	"k8s.io/kubernetes/pkg/util/mount"
 
 	"github.com/golang/glog"
+)
+
+const (
+	volumeAttributeBucket = "bucket"
+	volumeAttributePrefix = "prefix"
+	paramMounter          = "mounter"
+	bucketNamePrefix      = "csi-"
 )
 
 func waitForProcess(p *os.Process, backoff int) error {
@@ -46,16 +52,13 @@ func waitForMount(path string, timeout time.Duration) error {
 	var interval = 10 * time.Millisecond
 	for {
 		notMount, err := mount.New("").IsNotMountPoint(path)
-		if err != nil {
-			return err
-		}
-		if !notMount {
+		if err == nil && !notMount {
 			return nil
 		}
 		time.Sleep(interval)
 		elapsed = elapsed + interval
 		if elapsed >= timeout {
-			return errors.New("Timeout waiting for mount")
+			return fmt.Errorf("Timeout waiting for mount, leatest error: %w", err)
 		}
 	}
 }

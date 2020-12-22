@@ -3,11 +3,11 @@ package s3
 import (
 	"fmt"
 	"os"
+	"strings"
 )
 
 // Implements Mounter
 type s3fsMounter struct {
-	bucket        *bucket
 	url           string
 	region        string
 	pwFileContent string
@@ -17,37 +17,48 @@ const (
 	s3fsCmd = "s3fs"
 )
 
-func newS3fsMounter(b *bucket, cfg *Config) (Mounter, error) {
+func newS3fsMounter(cfg *Config) (Mounter, error) {
 	return &s3fsMounter{
-		bucket:        b,
 		url:           cfg.Endpoint,
 		region:        cfg.Region,
 		pwFileContent: cfg.AccessKeyID + ":" + cfg.SecretAccessKey,
 	}, nil
 }
 
-func (s3fs *s3fsMounter) Stage(stageTarget string) error {
+func (s3fs *s3fsMounter) Stage(*volume, string) error {
 	return nil
 }
 
-func (s3fs *s3fsMounter) Unstage(stageTarget string) error {
+func (s3fs *s3fsMounter) Unstage(*volume, string) error {
 	return nil
 }
 
-func (s3fs *s3fsMounter) Mount(source string, target string) error {
+func (s3fs *s3fsMounter) Mount(vol *volume, source string, target string) error {
 	if err := writes3fsPass(s3fs.pwFileContent); err != nil {
-		return err
+		return fmt.Errorf("write s3 fs pass: %w", err)
 	}
-	args := []string{
-		fmt.Sprintf("%s:/%s", s3fs.bucket.Name, s3fs.bucket.FSPath),
-		fmt.Sprintf("%s", target),
+
+	dev := vol.Bucket
+	if vol.Prefix != "" {
+		dev += ":/" + strings.TrimSuffix(vol.Prefix, "/")
+	}
+
+	opts := []string{
+		dev,
+		target,
+		"-f",
 		"-o", "use_path_request_style",
-		"-o", fmt.Sprintf("url=%s", s3fs.url),
-		"-o", fmt.Sprintf("endpoint=%s", s3fs.region),
+		"-o", "url=" + s3fs.url,
+		"-o", "endpoint=" + s3fs.region,
 		"-o", "allow_other",
 		"-o", "mp_umask=000",
 	}
-	return fuseMount(target, s3fsCmd, args)
+
+	if e := fuseMount(target, s3fsCmd, opts); e != nil {
+		return fmt.Errorf("failed to mount s3fs: %w", e)
+	}
+
+	return nil
 }
 
 func writes3fsPass(pwFileContent string) error {
