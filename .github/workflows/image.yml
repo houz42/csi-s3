@@ -27,7 +27,7 @@ jobs:
           context: ./
           file: ./cmd/s3driver/Dockerfile
           push: true
-          tags: latest
+          tags: houz42/csi-s3:latest
 
       - name: build s3 driver full
         id: docker_build_s3_full
@@ -36,4 +36,4 @@ jobs:
           context: ./
           file: ./cmd/s3driver/Dockerfile.full
           push: true
-          tags: full
+          tags: houz42/csi-s3:full

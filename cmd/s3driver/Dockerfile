@@ -1,4 +1,9 @@
-FROM debian:stretch
+FROM golang:1.15-buster AS builder
+WORKDIR /src
+COPY . .
+RUN CGO_ENABLED=0 GOOS=linux go build -a -ldflags '-extldflags "-static"' -o _output/s3driver ./cmd/s3driver
+
+FROM debian:buster
 LABEL maintainers="Cyrill Troxler <cyrilltroxler@gmail.com>"
 LABEL description="csi-s3 slim image"
 
@@ -16,5 +21,5 @@ RUN cd /tmp \
   && mv /tmp/rclone-*-linux-amd64/rclone /usr/bin \
   && rm -r /tmp/rclone*
 
-COPY ./_output/s3driver /s3driver
+COPY --from=builder /src/_output/s3driver /s3driver
 ENTRYPOINT ["/s3driver"]
