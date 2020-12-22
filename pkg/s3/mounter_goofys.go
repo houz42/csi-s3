@@ -36,6 +36,10 @@ func newGoofysMounter(cfg *Config) (Mounter, error) {
 	}, nil
 }
 
+func (goofys *goofysMounter) InitVolume(vol *volume) error {
+	return errUnimplemented
+}
+
 func (goofys *goofysMounter) Stage(*volume, string) error {
 	return nil
 }

@@ -3,6 +3,7 @@ package s3
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/url"
 	"path"
@@ -97,17 +98,7 @@ func (client *s3Client) createVolume(vol *volume) error {
 		}
 	}
 
-	b := new(bytes.Buffer)
-	if e := json.NewEncoder(b).Encode(vol); e != nil {
-		return e
-	}
-	if _, err = client.minio.PutObject(vol.Bucket, path.Join(vol.Prefix, metadataName),
-		b, int64(b.Len()),
-		minio.PutObjectOptions{ContentType: "application/json"}); err != nil {
-		return fmt.Errorf("create metadata object: %w", err)
-	}
-
-	return nil
+	return client.initVolume(vol)
 }
 
 func (client *s3Client) removeVolume(vol *volume) error {
@@ -179,4 +170,30 @@ func (client *s3Client) getVolume(vol *volume) error {
 	}
 
 	return json.NewDecoder(obj).Decode(vol)
+}
+
+func (client *s3Client) initVolume(vol *volume) error {
+	mounter, e := client.mounter()
+	if e != nil {
+		return fmt.Errorf("init mounter: %w", e)
+	}
+
+	if e := mounter.InitVolume(vol); e != nil {
+		if errors.Is(e, errUnimplemented) {
+			b := new(bytes.Buffer)
+			if e := json.NewEncoder(b).Encode(vol); e != nil {
+				return e
+			}
+			if _, err := client.minio.PutObject(vol.Bucket, path.Join(vol.Prefix, metadataName),
+				b, int64(b.Len()),
+				minio.PutObjectOptions{ContentType: "application/json"}); err != nil {
+				return fmt.Errorf("create metadata object: %w", err)
+			}
+			return nil
+		}
+
+		return fmt.Errorf("init volume: %w", e)
+	}
+
+	return nil
 }

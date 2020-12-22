@@ -48,6 +48,10 @@ func newS3backerMounter(cfg *Config) (Mounter, error) {
 	return s3backer, s3backer.writePasswd()
 }
 
+func (s3backer *s3backerMounter) InitVolume(vol *volume) error {
+	return errUnimplemented
+}
+
 func (s3backer *s3backerMounter) Stage(vol *volume, stageTarget string) error {
 	// s3backer uses the loop device
 	if err := createLoopDevice(S3backerLoopDevice); err != nil {

@@ -1,6 +1,7 @@
 package s3
 
 import (
+	"errors"
 	"fmt"
 	"os/exec"
 	"time"
@@ -12,6 +13,7 @@ import (
 // Mounter interface which can be implemented
 // by the different mounter types
 type Mounter interface {
+	InitVolume(vol *volume) error
 	Stage(vol *volume, stagePath string) error
 	Unstage(vol *volume, stagePath string) error
 	Mount(vol *volume, source string, target string) error
@@ -23,6 +25,10 @@ const (
 	s3backerMounterType = "s3backer"
 	rcloneMounterType   = "rclone"
 	mounterTypeKey      = "mounter"
+)
+
+var (
+	errUnimplemented = errors.New("unimplemented")
 )
 
 // newMounter returns a new mounter depending on the mounterType parameter

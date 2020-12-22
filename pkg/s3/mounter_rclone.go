@@ -26,6 +26,10 @@ func newRcloneMounter(cfg *Config) (Mounter, error) {
 	}, nil
 }
 
+func (rclone *rcloneMounter) InitVolume(vol *volume) error {
+	return errUnimplemented
+}
+
 func (rclone *rcloneMounter) Stage(*volume, string) error {
 	return nil
 }
