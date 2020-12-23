@@ -49,13 +49,16 @@ func newS3Client(cfg *Config) (*s3Client, error) {
 	return client, nil
 }
 
-func newS3ClientFromSecrets(secrets map[string]string) (*s3Client, error) {
+func newS3ClientFromSecrets(secrets map[string]string, mounter string) (*s3Client, error) {
+	if mounter == "" {
+		mounter = secrets["mounter"]
+	}
 	return newS3Client(&Config{
 		AccessKeyID:     secrets["accessKeyID"],
 		SecretAccessKey: secrets["secretAccessKey"],
 		Region:          secrets["region"],
 		Endpoint:        secrets["endpoint"],
-		Mounter:         secrets["mounter"],
+		Mounter:         mounter,
 		CommonBucket:    secrets["commonBucket"],
 		CommonPrefix:    secrets["commonPrefix"],
 	})

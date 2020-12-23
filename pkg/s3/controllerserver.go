@@ -64,13 +64,14 @@ func (cs *controllerServer) CreateVolume(ctx context.Context, req *csi.CreateVol
 
 	glog.V(4).Infof("Got a request to create volume  %v", volume)
 
-	s3, err := newS3ClientFromSecrets(req.GetSecrets())
+	s3, err := newS3ClientFromSecrets(req.GetSecrets(), params[paramMounter])
 	if err != nil {
 		return nil, fmt.Errorf("failed to initialize S3 client: %w", err)
 	}
 	s3.completeVolume(volume)
 	params[volumeAttributeBucket] = volume.Bucket
 	params[volumeAttributePrefix] = volume.Prefix
+	params[paramMounter] = s3.cfg.Mounter
 
 	exists, err := s3.volumeExists(volume)
 	if err != nil || !exists {
@@ -112,7 +113,7 @@ func (cs *controllerServer) DeleteVolume(ctx context.Context, req *csi.DeleteVol
 	}
 	glog.V(4).Infof("Deleting volume %s", volumeID)
 
-	s3, err := newS3ClientFromSecrets(req.GetSecrets())
+	s3, err := newS3ClientFromSecrets(req.GetSecrets(), "")
 	if err != nil {
 		return nil, fmt.Errorf("failed to initialize S3 client: %s", err)
 	}
@@ -139,7 +140,7 @@ func (cs *controllerServer) ValidateVolumeCapabilities(ctx context.Context, req 
 		return nil, status.Error(codes.InvalidArgument, "Volume capabilities missing in request")
 	}
 
-	s3, err := newS3ClientFromSecrets(req.GetSecrets())
+	s3, err := newS3ClientFromSecrets(req.GetSecrets(), "")
 	if err != nil {
 		return nil, fmt.Errorf("failed to initialize S3 client: %s", err)
 	}

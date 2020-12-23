@@ -78,7 +78,7 @@ func (ns *nodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublis
 	glog.V(4).Infof("target %v\ndevice %v\nreadonly %v\nvolumeId %v\nattributes %v\nmountflags %v\n",
 		targetPath, deviceID, readOnly, volumeID, attrib, mountFlags)
 
-	s3, err := newS3ClientFromSecrets(req.GetSecrets())
+	s3, err := newS3ClientFromSecrets(req.GetSecrets(), req.GetVolumeContext()[paramMounter])
 	if err != nil {
 		return nil, status.Error(codes.Internal, fmt.Sprintf("failed to initialize S3 client: %s", err))
 	}
@@ -149,7 +149,7 @@ func (ns *nodeServer) NodeStageVolume(ctx context.Context, req *csi.NodeStageVol
 	if !notMnt {
 		return &csi.NodeStageVolumeResponse{}, nil
 	}
-	s3, err := newS3ClientFromSecrets(req.GetSecrets())
+	s3, err := newS3ClientFromSecrets(req.GetSecrets(), req.GetPublishContext()[paramMounter])
 	if err != nil {
 		return nil, fmt.Errorf("failed to initialize S3 client: %s", err)
 	}
