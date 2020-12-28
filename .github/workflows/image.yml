@@ -34,7 +34,7 @@ jobs:
       - id: driver_meta
         uses: crazy-max/ghaction-docker-meta@v1
         with:
-          images: houz42/csi-s3 # list of Docker images to use as base name for tags
+          images: supremind/csi-s3 # list of Docker images to use as base name for tags
           tag-sha: true # add git short SHA as Docker tag
 
       - name: build s3 driver
@@ -50,7 +50,7 @@ jobs:
       - id: full_meta
         uses: crazy-max/ghaction-docker-meta@v1
         with:
-          images: houz42/csi-s3-full # list of Docker images to use as base name for tags
+          images: supremind/csi-s3-full # list of Docker images to use as base name for tags
           tag-sha: true # add git short SHA as Docker tag
 
       - name: build s3 driver full
